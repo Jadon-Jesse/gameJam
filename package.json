@@ -2,7 +2,6 @@
   "name": "gameJam",
   "version": "1.0.0",
   "description": "### Context While we're still deciding on whether we want to play a game or make a game... I thought i'd advocate for 'make a game' by putting together a super  basic demo using [three.js](https://threejs.org/)",
-  "main": "index.js",
   "dependencies": {},
   "devDependencies": {
     "three": "^0.120.1",
@@ -10,7 +9,9 @@
     "webpack-cli": "^3.3.12"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build":"webpack",
+    "start":"webpack --mode=development"
   },
   "repository": {
     "type": "git",
