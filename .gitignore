@@ -7,7 +7,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 Scripts/
-dist/
 debug/
 
 #ignore our fa credentials
@@ -23,7 +22,6 @@ settings.py
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/

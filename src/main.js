@@ -1,4 +1,6 @@
-import * as THREE from 'three';
+import * as THREE from 'three'
+import * as FPC from 'three/examples/jsm/controls/FirstPersonControls'
+
 
 // globals
 var camera, scene, renderer;
@@ -28,7 +30,7 @@ function setupThreeJS() {
     clock = new THREE.Clock();
 
     // setup fps controls
-    controls = new THREE.FirstPersonControls(camera);
+    controls = new FPC.FirstPersonControls(camera);
     controls.movementSpeed = 100;
     controls.lookSpeed = 0.1;
 }
