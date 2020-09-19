@@ -14,7 +14,8 @@ It also gives you the ability to fly around those building in first-person.
 This repo contains all the files needed to run the demo in your browser (firefox or chrome). Just follow these steps:
 
 1. Clone this repo to your local machine
-2. Open index.html in your browser
+2. Run "npm start" for a development build
+3. Open index.html in your browser. Alternatively, if using vs code, run a Live Server using the extension: https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer
 
 
 ### How to play
