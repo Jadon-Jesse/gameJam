@@ -1,4 +1,5 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 const path = require("path");
 
 module.exports = {
@@ -11,6 +12,38 @@ module.exports = {
     path: path.resolve(__dirname, "build"),
   },
   plugins:[
-    new HtmlWebpackPlugin()
-  ]
+    new HtmlWebpackPlugin(),
+    new CopyWebpackPlugin({
+        patterns: [
+            { from: "./src/static" }
+        ]
+    })
+  ],
+   module: {
+     rules: [
+       {
+         test: /\.js$/,
+         exclude: /node_modules/
+       },
+       {
+         test: /\.(gltf)$/,
+         use: [
+           {
+             loader: "gltf-webpack-loader"
+           }
+         ]
+       },
+       {
+         test: [/\.(bin)$/, /\.(jpg)$/, /\.(png)$/],
+         use: [
+           {
+             loader: 'file-loader',
+             options: {
+               name: '[name]-[hash].[ext]'
+             }
+           }
+         ]
+       }
+     ]
+   },
 };
