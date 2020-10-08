@@ -6,308 +6,32 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 var camera, scene, renderer, model;
 var controls, clock;
 
+// 3rd person camera
+var goal, keys, follow;
+
+var temp = new THREE.Vector3();
+var dir = new THREE.Vector3();
+var a = new THREE.Vector3();
+var b = new THREE.Vector3();
+var coronaSafetyDistance = 2;
+var velocity = 0.0;
+var speed = 0.0;
+
+// animation setup
+var mixer, actions, activeAction, previousAction;
+var api = { state: 'Walking' };
+
 var objects = [];
-
-var raycaster;
-
-var moveForward = false;
-var moveBackward = false;
-var moveLeft = false;
-var moveRight = false;
-var canJump = false;
-
-var prevTime = performance.now();
-var velocity = new THREE.Vector3();
-var direction = new THREE.Vector3();
-var vertex = new THREE.Vector3();
-var color = new THREE.Color();
-
-
-
-function init() {
-
-    camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.y = 10;
-    // camera.position.set( - 5, 3, 10 );
-    // camera.lookAt( new THREE.Vector3( 0, 2, 0 ) );
-
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color( 0x000000 );
-    scene.fog = new THREE.Fog( 0xffffff, 0, 750 );
-
-    var light = new THREE.HemisphereLight( 0xeeeeff, 0x777788, 0.75 );
-    // light.position.set( 0.5, 1, 0.75 );
-    scene.add( light );
-
-    var loader = new GLTFLoader();
-    loader.load( './assets/models/RobotExpressive.glb', function ( gltf ) {
-
-        model = gltf.scene;
-        scene.add( model );
-
-
-        // attach camera to model
-        // note the order
-        camera.add(model);
-        model.position.set(0,-5,-5);
-
-
-    }, undefined, function ( e ) {
-
-        console.error( e );
-
-    } );
-
-
-    controls = new PointerLockControls( camera, document.body );
-
-    var blocker = document.getElementById( 'blocker' );
-    var instructions = document.getElementById( 'instructions' );
-
-    instructions.addEventListener( 'click', function () {
-
-        controls.lock();
-
-    }, false );
-
-    controls.addEventListener( 'lock', function () {
-
-        instructions.style.display = 'none';
-        blocker.style.display = 'none';
-
-    } );
-
-    controls.addEventListener( 'unlock', function () {
-
-        blocker.style.display = 'block';
-        instructions.style.display = '';
-
-    } );
-
-    scene.add( controls.getObject() );
-
-    var onKeyDown = function ( event ) {
-
-        switch ( event.keyCode ) {
-
-            case 38: // up
-            case 87: // w
-                moveForward = true;
-                break;
-
-            case 37: // left
-            case 65: // a
-                moveLeft = true;
-                break;
-
-            case 40: // down
-            case 83: // s
-                moveBackward = true;
-                break;
-
-            case 39: // right
-            case 68: // d
-                moveRight = true;
-                break;
-
-            case 32: // space
-                if ( canJump === true ) velocity.y += 350;
-                canJump = false;
-                break;
-
-        }
-
-    };
-
-    var onKeyUp = function ( event ) {
-
-        switch ( event.keyCode ) {
-
-            case 38: // up
-            case 87: // w
-                moveForward = false;
-                break;
-
-            case 37: // left
-            case 65: // a
-                moveLeft = false;
-                break;
-
-            case 40: // down
-            case 83: // s
-                moveBackward = false;
-                break;
-
-            case 39: // right
-            case 68: // d
-                moveRight = false;
-                break;
-
-        }
-
-    };
-
-    document.addEventListener( 'keydown', onKeyDown, false );
-    document.addEventListener( 'keyup', onKeyUp, false );
-
-    raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
-
-    // floor
-
-    var floorGeometry = new THREE.PlaneBufferGeometry( 2000, 2000, 100, 100 );
-    floorGeometry.rotateX( - Math.PI / 2 );
-
-    // vertex displacement
-
-    var position = floorGeometry.attributes.position;
-
-    for ( var i = 0, l = position.count; i < l; i ++ ) {
-
-        vertex.fromBufferAttribute( position, i );
-
-        vertex.x += Math.random() * 20 - 10;
-        vertex.y += Math.random() * 2;
-        vertex.z += Math.random() * 20 - 10;
-
-        position.setXYZ( i, vertex.x, vertex.y, vertex.z );
-
-    }
-
-    floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
-
-    position = floorGeometry.attributes.position;
-    var colors = [];
-
-    for ( var i = 0, l = position.count; i < l; i ++ ) {
-
-        color.setHSL( Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
-        colors.push( color.r, color.g, color.b );
-
-    }
-
-    floorGeometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
-
-    var floorMaterial = new THREE.MeshBasicMaterial( { vertexColors: true } );
-
-    var floor = new THREE.Mesh( floorGeometry, floorMaterial );
-    scene.add( floor );
-
-    // objects
-
-    var boxGeometry = new THREE.BoxBufferGeometry( 20, 20, 20 );
-    boxGeometry = boxGeometry.toNonIndexed(); // ensure each face has unique vertices
-
-    position = boxGeometry.attributes.position;
-    colors = [];
-
-    for ( var i = 0, l = position.count; i < l; i ++ ) {
-
-        color.setHSL( Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
-        colors.push( color.r, color.g, color.b );
-
-    }
-
-    boxGeometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
-
-    for ( var i = 0; i < 500; i ++ ) {
-
-        var boxMaterial = new THREE.MeshPhongMaterial( { specular: 0xffffff, flatShading: true, vertexColors: true } );
-        boxMaterial.color.setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
-
-        var box = new THREE.Mesh( boxGeometry, boxMaterial );
-        box.position.x = Math.floor( Math.random() * 20 - 10 ) * 20;
-        box.position.y = Math.floor( Math.random() * 20 ) * 20 + 10;
-        box.position.z = Math.floor( Math.random() * 20 - 10 ) * 20;
-
-        scene.add( box );
-        objects.push( box );
-
-    }
-
-    // model
-
-
-
-    //
-
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    document.body.appendChild( renderer.domElement );
-
-    //
-
-    window.addEventListener( 'resize', onWindowResize, false );
-
-}
+var environment = [];
 
 function onWindowResize() {
 
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
 }
-
-function animate() {
-
-    requestAnimationFrame( animate );
-
-    var time = performance.now();
-
-    if ( controls.isLocked === true ) {
-
-        raycaster.ray.origin.copy( controls.getObject().position );
-        raycaster.ray.origin.y -= 10;
-
-        var intersections = raycaster.intersectObjects( objects );
-
-        var onObject = intersections.length > 0;
-
-        var delta = ( time - prevTime ) / 1000;
-
-        velocity.x -= velocity.x * 10.0 * delta;
-        velocity.z -= velocity.z * 10.0 * delta;
-
-        velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-        direction.z = Number( moveForward ) - Number( moveBackward );
-        direction.x = Number( moveRight ) - Number( moveLeft );
-        direction.normalize(); // this ensures consistent movements in all directions
-
-        if ( moveForward || moveBackward ) velocity.z -= direction.z * 400.0 * delta;
-        if ( moveLeft || moveRight ) velocity.x -= direction.x * 400.0 * delta;
-
-        if ( onObject === true ) {
-
-            velocity.y = Math.max( 0, velocity.y );
-            canJump = true;
-
-        }
-
-        controls.moveRight( - velocity.x * delta );
-        controls.moveForward( - velocity.z * delta );
-
-        controls.getObject().position.y += ( velocity.y * delta ); // new behavior
-
-        if ( controls.getObject().position.y < 10 ) {
-
-            velocity.y = 0;
-            controls.getObject().position.y = 10;
-
-            canJump = true;
-
-        }
-
-    }
-
-    prevTime = time;
-
-    renderer.render( scene, camera );
-
-}
-
 
 function setupTitleScreen() {
     // Inject HTML & CSS used for cover page
@@ -367,11 +91,263 @@ function setupTitleScreen() {
 }
 
 
-function setup() {
-    setupTitleScreen();
-    init();
-    animate();
+function init() {
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000);
+    camera.position.set(0, 1, 0);
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.Fog(0xffffff, 0, 750);
+
+    clock = new THREE.Clock();
+
+
+    var light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.75);
+    // light.position.set( 0.5, 1, 0.75 );
+    scene.add(light);
+    camera.lookAt(scene.position);
+
+    // setup env
+    var geometry = new THREE.BoxBufferGeometry(0.2, 0.2, 0.2);
+    var material = new THREE.MeshNormalMaterial();
+
+    var mesh = new THREE.Mesh(geometry, material);
+
+    var rand = Math.random;
+
+    for (var x = 0; x < 10; x++) {
+        for (var y = 0; y < 10; y++) {
+
+            var clone = mesh.clone();
+
+            clone.position.set(((x - 5) / 10) * 15, 0, (((y - 5) / 10) * 15) + 10);
+            clone.scale.set(1 + rand() * 4, 1 + rand() * 2, 1 + rand() * 4);
+            scene.add(clone);
+
+            environment.push(clone);
+
+        }
+    }
+
+
+
+    var loader = new GLTFLoader();
+    loader.load('./assets/models/RobotExpressive.glb', function (gltf) {
+
+        model = gltf.scene;
+
+        goal = new THREE.Object3D();
+        follow = new THREE.Object3D();
+        follow.position.z = -coronaSafetyDistance;
+        model.add(follow);
+
+        model.scale.set(0.1, 0.1, 0.1);
+
+        goal.add(camera);
+        scene.add(model);
+
+
+        setupModelAnimations(model, gltf.animations);
+
+
+    }, undefined, function (e) {
+
+        console.error(e);
+
+    });
+
+
+
+
+
+    var gridHelper = new THREE.GridHelper(100, 100);
+    scene.add(gridHelper);
+
+    scene.add(new THREE.AxesHelper());
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    keys = {
+        a: false,
+        s: false,
+        d: false,
+        w: false,
+        space: false
+    };
+
+    document.body.addEventListener('keydown', function (e) {
+        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/repeat
+        if (e.repeat) { return }
+
+        // handle space bar
+        if (e.code == "Space") {
+            console.log("Space pressed");
+            keys.space = true;
+
+            fadeToAction("Jump", 0);
+        }
+
+        const key = e.code.replace('Key', '').toLowerCase();
+        if (keys[key] !== undefined) {
+            keys[key] = true;
+
+            if (keys.w === true || keys.s === true || keys.a === true || keys.d === true) {
+                console.log("walking");
+                // activeAction = actions['Walking'];
+                // activeAction.play();
+                fadeToAction("Walking", 0.2);
+            }
+        }
+        console.log(e);
+
+
+
+
+
+
+
+
+    });
+    document.body.addEventListener('keyup', function (e) {
+
+        // dont handle space bar on key release
+        if (e.code == "Space") {
+            console.log("Space left");
+            keys.space = false;
+            fadeToAction("Idle", 0.2);
+        }
+
+        const key = e.code.replace('Key', '').toLowerCase();
+        if (keys[key] !== undefined) {
+
+            keys[key] = false;
+
+            console.log(keys);
+
+            // if all nav keys unpressed then idle anim
+            if (keys.w === false && keys.s === false && keys.a === false && keys.d === false) {
+                console.log("stopping anim");
+                fadeToAction("Idle", 0.2);
+                // activeAction = actions['Idle'];
+                // activeAction.play();
+            }
+        }
+
+
+
+    });
 
 }
 
+
+function setupModelAnimations(model, animations) {
+    var states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
+    var emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
+
+    mixer = new THREE.AnimationMixer(model);
+
+    actions = {};
+
+    for (var i = 0; i < animations.length; i++) {
+
+        var clip = animations[i];
+        var action = mixer.clipAction(clip);
+        actions[clip.name] = action;
+
+        if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
+
+            action.clampWhenFinished = true;
+            action.loop = THREE.LoopOnce;
+
+        }
+
+    }
+
+
+
+    activeAction = actions['Idle'];
+    activeAction.play();
+
+}
+
+
+function fadeToAction(name, duration) {
+
+    previousAction = activeAction;
+    activeAction = actions[name];
+
+    if (previousAction !== activeAction) {
+
+        previousAction.fadeOut(duration);
+
+    }
+
+    activeAction
+        .reset()
+        .setEffectiveTimeScale(1)
+        .setEffectiveWeight(1)
+        .fadeIn(duration)
+        .play();
+
+}
+
+
+
+
+function animate() {
+
+    var dt = clock.getDelta();
+    if (mixer) {
+        mixer.update(dt);
+    }
+
+
+    requestAnimationFrame(animate);
+
+
+    speed = 0.0;
+
+    if (keys.w)
+        speed = 0.01;
+    else if (keys.s)
+        speed = -0.01;
+
+    velocity += (speed - velocity) * .3;
+    model.translateZ(velocity);
+
+    if (keys.a)
+        model.rotateY(0.05);
+    else if (keys.d)
+        model.rotateY(-0.05);
+
+
+    a.lerp(model.position, 0.4);
+    b.copy(goal.position);
+
+    dir.copy(a).sub(b).normalize();
+    const dis = a.distanceTo(b) - coronaSafetyDistance;
+    goal.position.addScaledVector(dir, dis);
+    goal.position.lerp(temp, 0.02);
+    temp.setFromMatrixPosition(follow.matrixWorld);
+
+    camera.lookAt(model.position);
+
+
+    renderer.render(scene, camera);
+
+}
+
+
+function setup() {
+    init();
+    animate();
+}
+
 setup();
+
+
+
+
