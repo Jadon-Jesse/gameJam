@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "### Context While we're still deciding on whether we want to play a game or make a game... I thought i'd advocate for 'make a game' by putting together a super  basic demo using [three.js](https://threejs.org/)",
   "dependencies": {
+    "cannon": "^0.6.2",
     "copy-webpack-plugin": "^6.1.1",
     "file-loader": "^6.1.0",
     "gltf-webpack-loader": "^1.0.6",

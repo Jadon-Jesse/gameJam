@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
 // import RoboModel from './static/assets/models/RobotExpressive.glb'
 // globals
 var camera, scene, renderer, model;
@@ -19,7 +20,7 @@ var speed = 0.0;
 
 // animation setup
 var mixer, actions, activeAction, previousAction;
-var api = { state: 'Walking' };
+var modelState = { state: 'Idle' };
 
 var objects = [];
 var environment = [];
@@ -187,21 +188,30 @@ function init() {
             console.log("Space pressed");
             keys.space = true;
 
-            fadeToAction("Jump", 0);
+            fadeToAction("Jump", 0.2);
         }
 
         const key = e.code.replace('Key', '').toLowerCase();
         if (keys[key] !== undefined) {
             keys[key] = true;
+            console.log("key pressed", key);
 
             if (keys.w === true || keys.s === true || keys.a === true || keys.d === true) {
-                console.log("walking");
-                // activeAction = actions['Walking'];
-                // activeAction.play();
-                fadeToAction("Walking", 0.2);
+                // if we are currently jumping
+                if (keys.space === true) {
+                    console.log("already jumping");
+                }
+                else {
+                    console.log("walking");
+
+                    // activeAction = actions['Walking'];
+                    // activeAction.play();
+                    fadeToAction("Walking", 0.2);
+
+                }
             }
         }
-        console.log(e);
+        // console.log(e);
 
 
 
@@ -226,6 +236,8 @@ function init() {
             keys[key] = false;
 
             console.log(keys);
+            console.log("key unpressed", key);
+
 
             // if all nav keys unpressed then idle anim
             if (keys.w === false && keys.s === false && keys.a === false && keys.d === false) {
@@ -296,6 +308,28 @@ function fadeToAction(name, duration) {
 
 
 
+function updateModelState() {
+
+    if (keys.w === true || keys.s === true || keys.a === true || keys.d === true) {
+        // if we are currently jumping
+        if (keys.space === true) {
+            // console.log("already jumping");
+            modelState.state = "Jump"
+        }
+        else {
+            console.log("walking");
+
+            // activeAction = actions['Walking'];
+            // activeAction.play();
+            // fadeToAction("Walking", 0.2);
+            modelState.state = "Walking"
+
+        }
+    }
+
+}
+
+
 
 function animate() {
 
@@ -323,6 +357,20 @@ function animate() {
     else if (keys.d)
         model.rotateY(-0.05);
 
+    // the jump
+    if (keys.space === true) {
+        model.translateY(0.01);
+    }
+    else if (keys.space === false) {
+        // some gravity to bring you down
+        const g = 9.8;
+        if (model.position.y > 0) {
+
+            model.translateY(-0.01);
+        }
+    }
+
+
 
     a.lerp(model.position, 0.4);
     b.copy(goal.position);
@@ -336,7 +384,31 @@ function animate() {
     camera.lookAt(model.position);
 
 
+
+    for (var i = 0; i < environment.length; i++) {
+        var obj = environment[i];
+        var modelObjDist = Distance(model, obj);
+        if (modelObjDist < 0.5) {
+            console.log("In range");
+            console.log(modelObjDist);
+            // console.log(obj);
+            // var material = new THREE.MeshNormalMaterial();
+            var newMat = new THREE.MeshPhongMaterial();
+            obj.material = newMat;
+            environment[i] = obj;
+        }
+    }
+
+
     renderer.render(scene, camera);
+
+}
+
+function Distance(value1, value2) {
+
+    var Distance = Math.pow(Math.pow(value1.position.x - value2.position.x, 2) + Math.pow(value1.position.y - value2.position.y, 2) + Math.pow(value1.position.z - value2.position.z, 2), 0.5)
+
+    return Distance;
 
 }
 
@@ -347,7 +419,3 @@ function setup() {
 }
 
 setup();
-
-
-
-
